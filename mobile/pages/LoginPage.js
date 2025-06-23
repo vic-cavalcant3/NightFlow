@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,9 +24,8 @@ export default function LoginPage() {
   const [showSenha, setShowSenha] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const titleOpacity = new Animated.Value(0);
-  const titleScale = new Animated.Value(0.8);
-
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleScale = useRef(new Animated.Value(0.8)).current;
   useEffect(() => {
     Animated.parallel([
       Animated.timing(titleOpacity, {
@@ -51,7 +50,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://192.168.0.169:4000/login', {
+      const response = await fetch('http://192.168.0.110:4000/cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha }),
@@ -61,7 +60,7 @@ export default function LoginPage() {
       if (data.success) {
         Alert.alert('Sucesso', 'Login realizado!');
         // Navegar para a Home ou página principal do app
-        navigation.navigate('HomePage'); // ou como estiver nomeada
+        navigation.navigate('HomeScreen'); // ou como estiver nomeada
       } else {
         Alert.alert('Erro', data.message || 'Credenciais inválidas');
       }
@@ -86,17 +85,17 @@ export default function LoginPage() {
       <View style={styles.circle3} />
 
       <View style={styles.content}>
-        <Animated.Text
-          style={[
-            styles.title,
-            {
-              opacity: titleOpacity,
-              transform: [{ scale: titleScale }],
-            },
-          ]}
-        >
-          Entrar
-        </Animated.Text>
+              <Animated.Text 
+                    style={[
+                      styles.title,
+                      {
+                        opacity: titleOpacity,
+                        transform: [{ scale: titleScale }]
+                      }
+                    ]}
+                  >
+                    Faça o Login
+                  </Animated.Text>
 
         <TextInput
           placeholder="E-mail"
@@ -130,7 +129,7 @@ export default function LoginPage() {
         </View>
 
           <TouchableOpacity
-            onPress={handleSubmit}
+            onPress={handleLogin}
             disabled={isLoading}
             style={[styles.button, isLoading && { opacity: 0.8 }]}
           >
@@ -149,7 +148,7 @@ export default function LoginPage() {
           </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('RegisterPage')}
+          onPress={() => navigation.navigate('PageRegister')}
           style={styles.linkContainer}
         >
           <Text style={styles.link}>Não tem conta? </Text>
