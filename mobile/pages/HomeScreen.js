@@ -1,22 +1,170 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, StatusBar } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { Menu, MenuItem } from 'react-native-material-menu';x
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  StatusBar,
+  Alert,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons, MaterialIcons, Feather } from "@expo/vector-icons";
+import { Menu, MenuItem } from "react-native-material-menu";
+import { ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+
+const API_URL = '"http://192.168.15.7:4000'; // Altere para seu IP se necessário
 
 export default function HomePage({ navigation }) {
-  const [nome, setNome] = useState('Usuário');
+  const [nome, setNome] = useState("Usuário");
+  const [usuarioId, setUsuarioId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(false);
   const [userImage, setUserImage] = useState(null);
 
+  const [metasRecentes, setMetasRecentes] = useState([]);
+  const [eventos, setEventos] = useState([]);
+  const [estatisticas, setEstatisticas] = useState({
+    total: 0,
+    concluidas: 0,
+    pendentes: 0,
+  });
+
+  // Função para sair
+  const sair = async () => {
+    try {
+      await AsyncStorage.removeItem("usuarioLogado");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "PageLogin" }],
+      });
+    } catch (error) {
+      console.log("Erro ao sair:", error);
+    }
+  };
+
+  // Função para formatar data no padrão dd/mm/aaaa
+  const formatarData = (dataString) => {
+    if (!dataString) return "";
+    const data = new Date(dataString);
+    return data.toLocaleDateString("pt-BR");
+  };
+
+  // Função para formatar horário
+  const formatarHorario = (timeString) => {
+    if (!timeString) return "";
+    // Se já está no formato HH:MM, retorna direto
+    if (timeString.length === 8) {
+      return timeString.substring(0, 5); // Remove os segundos
+    }
+    // Se é uma data ISO, formata
+    const data = new Date(timeString);
+    if (isNaN(data)) return timeString;
+    return data.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Função para buscar dados do usuário
+  const buscarDadosUsuario = async () => {
+    try {
+      const dadosUsuario = await AsyncStorage.getItem("usuarioLogado");
+      if (dadosUsuario) {
+        const usuario = JSON.parse(dadosUsuario);
+        setNome(usuario.nome);
+        setUsuarioId(usuario.id);
+        return usuario.id;
+      }
+      return null;
+    } catch (erro) {
+      console.log("Erro ao buscar dados do usuário:", erro);
+      return null;
+    }
+  };
+
+  // Função para buscar estatísticas
+  const buscarEstatisticas = async (userId) => {
+    try {
+      const response = await fetch(`${API_URL}/estatisticas/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setEstatisticas(data.estatisticas);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar estatísticas:", error);
+    }
+  };
+
+  // Função para buscar metas
+  const buscarMetas = async (userId) => {
+    try {
+      const response = await fetch(`${API_URL}/metas/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Pegar as 2 metas mais recentes
+        const metasOrdenadas = data.metas.slice(0, 2);
+        setMetasRecentes(metasOrdenadas);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar metas:", error);
+    }
+  };
+
+  // Função para buscar eventos
+  const buscarEventos = async (userId) => {
+    try {
+      const response = await fetch(`${API_URL}/eventos/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filtrar eventos futuros e pegar o mais próximo
+        const hoje = new Date();
+        const eventosFuturos = data.eventos
+          .filter((e) => new Date(e.data) >= hoje)
+          .slice(0, 1);
+        
+        setEventos(eventosFuturos);
+      }
+    } catch (error) {
+      console.log("Erro ao buscar eventos:", error);
+    }
+  };
+
+  // Função para carregar todos os dados
+  const carregarDados = async () => {
+    const userId = await buscarDadosUsuario();
+    if (userId) {
+      await Promise.all([
+        buscarEstatisticas(userId),
+        buscarMetas(userId),
+        buscarEventos(userId)
+      ]);
+    }
+    setLoading(false);
+  };
+
+  // Carregar dados iniciais
   useEffect(() => {
-    // Simulando busca dos dados do usuário
-    setTimeout(() => {
-      setNome('Maria Silva');
-      setLoading(false);
-    }, 1000);
+    carregarDados();
   }, []);
+
+  // Recarregar dados quando a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      if (usuarioId) {
+        buscarEstatisticas(usuarioId);
+        buscarMetas(usuarioId);
+        buscarEventos(usuarioId);
+      }
+    }, [usuarioId])
+  );
 
   const hideMenu = () => setVisible(false);
   const showMenu = () => setVisible(true);
@@ -25,6 +173,7 @@ export default function HomePage({ navigation }) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#6D28D9" />
+        <Text style={styles.loadingText}>Carregando seus dados...</Text>
       </View>
     );
   }
@@ -35,14 +184,14 @@ export default function HomePage({ navigation }) {
       style={styles.container}
     >
       <StatusBar barStyle="light-content" backgroundColor="#0F072C" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.welcomeText}>Bem-vindo de volta,</Text>
-          <Text style={styles.userName}>{nome.split(' ')[0]}</Text>
+          <Text style={styles.userName}>{nome.split(" ")[0]}</Text>
         </View>
-        
+
         <Menu
           visible={visible}
           anchor={
@@ -59,25 +208,45 @@ export default function HomePage({ navigation }) {
           onRequestClose={hideMenu}
           style={styles.menu}
         >
-          <MenuItem onPress={() => { hideMenu(); navigation.navigate('Profile'); }}>
+          <MenuItem
+            onPress={() => {
+              hideMenu();
+              navigation.navigate("Profile");
+            }}
+          >
             <View style={styles.menuItem}>
               <Ionicons name="person-outline" size={20} color="#6D28D9" />
               <Text style={styles.menuText}>Meu Perfil</Text>
             </View>
           </MenuItem>
-          <MenuItem onPress={() => { hideMenu(); navigation.navigate('Calendar'); }}>
+          <MenuItem
+            onPress={() => {
+              hideMenu();
+              navigation.navigate("Calendar");
+            }}
+          >
             <View style={styles.menuItem}>
               <MaterialIcons name="calendar-today" size={20} color="#6D28D9" />
               <Text style={styles.menuText}>Calendário</Text>
             </View>
           </MenuItem>
-          <MenuItem onPress={() => { hideMenu(); navigation.navigate('Goals'); }}>
+          <MenuItem
+            onPress={() => {
+              hideMenu();
+              navigation.navigate("Goals");
+            }}
+          >
             <View style={styles.menuItem}>
               <Feather name="target" size={20} color="#6D28D9" />
               <Text style={styles.menuText}>Minhas Metas</Text>
             </View>
           </MenuItem>
-          <MenuItem onPress={hideMenu}>
+          <MenuItem
+            onPress={() => {
+              hideMenu();
+              sair();
+            }}
+          >
             <View style={styles.menuItem}>
               <Ionicons name="log-out-outline" size={20} color="#6D28D9" />
               <Text style={styles.menuText}>Sair</Text>
@@ -91,21 +260,31 @@ export default function HomePage({ navigation }) {
         {/* Cards de estatísticas */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>5</Text>
+            <Text style={styles.statNumber}>{estatisticas.total}</Text>
             <Text style={styles.statLabel}>Metas totais</Text>
-            <View style={[styles.statIndicator, { backgroundColor: '#6D28D9' }]} />
+            <View
+              style={[styles.statIndicator, { backgroundColor: "#6D28D9" }]}
+            />
           </View>
-          
+
           <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#10B981' }]}>3</Text>
+            <Text style={[styles.statNumber, { color: "#10B981" }]}>
+              {estatisticas.concluidas}
+            </Text>
             <Text style={styles.statLabel}>Concluídas</Text>
-            <View style={[styles.statIndicator, { backgroundColor: '#10B981' }]} />
+            <View
+              style={[styles.statIndicator, { backgroundColor: "#10B981" }]}
+            />
           </View>
-          
+
           <View style={styles.statCard}>
-            <Text style={[styles.statNumber, { color: '#F59E0B' }]}>2</Text>
+            <Text style={[styles.statNumber, { color: "#F59E0B" }]}>
+              {estatisticas.pendentes}
+            </Text>
             <Text style={styles.statLabel}>Em progresso</Text>
-            <View style={[styles.statIndicator, { backgroundColor: '#F59E0B' }]} />
+            <View
+              style={[styles.statIndicator, { backgroundColor: "#F59E0B" }]}
+            />
           </View>
         </View>
 
@@ -113,57 +292,92 @@ export default function HomePage({ navigation }) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Metas Recentes</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Goals')}>
+            <TouchableOpacity onPress={() => navigation.navigate("Goals")}>
               <Text style={styles.seeAll}>Ver todas</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.goalCard}>
-            <View style={styles.goalInfo}>
-              <View style={[styles.goalStatus, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.goalTitle}>Aprender React Native</Text>
+
+          {metasRecentes.length > 0 ? (
+            metasRecentes.map((meta, index) => (
+              <View style={styles.goalCard} key={index}>
+                <View style={styles.goalInfo}>
+                  <View
+                    style={[
+                      styles.goalStatus,
+                      {
+                        backgroundColor:
+                          meta.status === "concluida" ? "#10B981" : "#F59E0B",
+                      },
+                    ]}
+                  />
+                  <Text style={styles.goalTitle}>{meta.titulo}</Text>
+                </View>
+                <Text style={styles.goalDate}>
+                  {meta.status === "concluida"
+                    ? `Concluído em: ${formatarData(meta.concluidoEm)}`
+                    : `Prazo: ${formatarData(meta.prazo)}`}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Nenhuma meta encontrada</Text>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate("Goals")}
+              >
+                <Text style={styles.createButtonText}>Criar primeira meta</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.goalDate}>Concluído em: 15/06/2023</Text>
-          </View>
-          
-          <View style={styles.goalCard}>
-            <View style={styles.goalInfo}>
-              <View style={[styles.goalStatus, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.goalTitle}>Fazer 30 dias de exercícios</Text>
-            </View>
-            <Text style={styles.goalDate}>Prazo: 30/06/2023</Text>
-          </View>
+          )}
         </View>
 
         {/* Seção de calendário */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Próximos Eventos</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Calendar')}>
+            <TouchableOpacity onPress={() => navigation.navigate("Calendar")}>
               <Text style={styles.seeAll}>Ver calendário</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.eventCard}>
-            <View style={styles.eventDate}>
-              <Text style={styles.eventDay}>25</Text>
-              <Text style={styles.eventMonth}>JUN</Text>
+
+          {eventos.length > 0 ? (
+            eventos.map((evento, index) => {
+              const data = new Date(evento.data);
+              const dia = String(data.getDate()).padStart(2, "0");
+              const mes = data
+                .toLocaleString("pt-BR", { month: "short" })
+                .toUpperCase();
+
+              return (
+                <View style={styles.eventCard} key={index}>
+                  <View style={styles.eventDate}>
+                    <Text style={styles.eventDay}>{dia}</Text>
+                    <Text style={styles.eventMonth}>{mes}</Text>
+                  </View>
+                  <View style={styles.eventDetails}>
+                    <Text style={styles.eventTitle}>{evento.titulo}</Text>
+                    <Text style={styles.eventTime}>
+                      {formatarHorario(evento.horaInicio)} -{" "}
+                      {formatarHorario(evento.horaFim)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>Nenhum evento próximo</Text>
+              <TouchableOpacity 
+                style={styles.createButton}
+                onPress={() => navigation.navigate("Calendar")}
+              >
+                <Text style={styles.createButtonText}>Criar evento</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.eventDetails}>
-              <Text style={styles.eventTitle}>Consulta Médica</Text>
-              <Text style={styles.eventTime}>14:00 - 15:00</Text>
-            </View>
-          </View>
+          )}
         </View>
       </ScrollView>
-
-      {/* Botão de adicionar nova meta */}
-      <TouchableOpacity 
-        style={styles.addButton}
-        onPress={() => navigation.navigate('AddGoal')}
-      >
-        <Ionicons name="add" size={32} color="white" />
-      </TouchableOpacity>
     </LinearGradient>
   );
 }
@@ -174,35 +388,40 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0F072C',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#0F072C",
+  },
+  loadingText: {
+    color: "#E0E0E0",
+    fontSize: 16,
+    marginTop: 16,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 24,
     paddingTop: 60,
     paddingBottom: 20,
   },
   welcomeText: {
-    color: '#E0E0E0',
+    color: "#E0E0E0",
     fontSize: 16,
   },
   userName: {
-    color: 'white',
+    color: "white",
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginTop: 4,
   },
   userAvatarPlaceholder: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#EDE9FE',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#EDE9FE",
+    justifyContent: "center",
+    alignItems: "center",
   },
   userAvatar: {
     width: 48,
@@ -214,13 +433,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
   },
   menuText: {
     marginLeft: 12,
-    color: '#4B5563',
+    color: "#4B5563",
     fontSize: 16,
   },
   content: {
@@ -228,32 +447,32 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 32,
   },
   statCard: {
-    backgroundColor: '#1E0B4E',
+    backgroundColor: "#1E0B4E",
     borderRadius: 16,
     padding: 20,
-    width: '30%',
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+    width: "30%",
+    alignItems: "center",
+    position: "relative",
+    overflow: "hidden",
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#8B5CF6',
+    fontWeight: "bold",
+    color: "#8B5CF6",
     marginBottom: 8,
   },
   statLabel: {
-    color: '#D1D5DB',
+    color: "#D1D5DB",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   statIndicator: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -263,29 +482,29 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   sectionTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   seeAll: {
-    color: '#8B5CF6',
+    color: "#8B5CF6",
     fontSize: 14,
   },
   goalCard: {
-    backgroundColor: '#1E0B4E',
+    backgroundColor: "#1E0B4E",
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
   },
   goalInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   goalStatus: {
@@ -295,68 +514,75 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   goalTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   goalDate: {
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     fontSize: 12,
     marginLeft: 24,
   },
   eventCard: {
-    backgroundColor: '#1E0B4E',
+    backgroundColor: "#1E0B4E",
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   eventDate: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: "#6D28D9",
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 16,
   },
   eventDay: {
-    color: 'white',
+    color: "white",
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   eventMonth: {
-    color: 'white',
+    color: "white",
     fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontWeight: "bold",
+    textTransform: "uppercase",
   },
   eventDetails: {
     flex: 1,
   },
   eventTitle: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   eventTime: {
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     fontSize: 12,
   },
-  addButton: {
-    position: 'absolute',
-    bottom: 32,
-    right: 32,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#6D28D9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#6D28D9',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+  emptyState: {
+    backgroundColor: "#1E0B4E",
+    borderRadius: 12,
+    padding: 24,
+    alignItems: "center",
+  },
+  emptyStateText: {
+    color: "#9CA3AF",
+    fontSize: 14,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  createButton: {
+    backgroundColor: "#6D28D9",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  createButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

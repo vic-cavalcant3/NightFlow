@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,23 +9,26 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Dimensions
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Feather from 'react-native-vector-icons/Feather';
-import { LinearGradient } from 'expo-linear-gradient';
+  Dimensions,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import Feather from "react-native-vector-icons/Feather";
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 export default function LoginPage() {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const titleOpacity = useRef(new Animated.Value(0)).current;
   const titleScale = useRef(new Animated.Value(0.8)).current;
+
+  
   useEffect(() => {
     Animated.parallel([
       Animated.timing(titleOpacity, {
@@ -38,34 +41,40 @@ export default function LoginPage() {
         duration: 1000,
         easing: Easing.out(Easing.back(1.7)),
         useNativeDriver: true,
-      })
+      }),
     ]).start();
   }, []);
 
   const handleLogin = async () => {
     if (!email || !senha) {
-      Alert.alert('Erro', 'Preencha todos os campos!');
+      Alert.alert("Erro", "Preencha todos os campos!");
       return;
     }
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://192.168.0.110:4000/cadastro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("http://192.168.15.7:4000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),
       });
 
       const data = await response.json();
       if (data.success) {
-        Alert.alert('Sucesso', 'Login realizado!');
-        // Navegar para a Home ou página principal do app
-        navigation.navigate('HomeScreen'); // ou como estiver nomeada
+        await AsyncStorage.setItem(
+          "usuarioLogado",
+          JSON.stringify(data.usuario)
+        ); // Supondo que vem como "usuario"
+        Alert.alert(
+          "Sucesso",
+          `Bem-vindo(a), ${data.usuario.nome.split(" ")[0]}!`
+        );
+        navigation.navigate("HomeScreen");
       } else {
-        Alert.alert('Erro', data.message || 'Credenciais inválidas');
+        Alert.alert("Erro", data.message || "Credenciais inválidas");
       }
     } catch (error) {
-      Alert.alert('Erro', 'Erro ao conectar. Verifique a conexão.');
+      Alert.alert("Erro", "Erro ao conectar. Verifique a conexão.");
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +83,7 @@ export default function LoginPage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0D0D0D', '#1A0B2E', '#2D1B69', '#1A0B2E', '#0D0D0D']}
+        colors={["#0D0D0D", "#1A0B2E", "#2D1B69", "#1A0B2E", "#0D0D0D"]}
         style={StyleSheet.absoluteFillObject}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -85,17 +94,17 @@ export default function LoginPage() {
       <View style={styles.circle3} />
 
       <View style={styles.content}>
-              <Animated.Text 
-                    style={[
-                      styles.title,
-                      {
-                        opacity: titleOpacity,
-                        transform: [{ scale: titleScale }]
-                      }
-                    ]}
-                  >
-                    Faça o Login
-                  </Animated.Text>
+        <Animated.Text
+          style={[
+            styles.title,
+            {
+              opacity: titleOpacity,
+              transform: [{ scale: titleScale }],
+            },
+          ]}
+        >
+          Faça o Login
+        </Animated.Text>
 
         <TextInput
           placeholder="E-mail"
@@ -121,38 +130,38 @@ export default function LoginPage() {
             style={styles.eyeButton}
           >
             <Feather
-              name={showSenha ? 'eye-off' : 'eye'}
+              name={showSenha ? "eye-off" : "eye"}
               size={20}
               color="#9333EA"
             />
           </TouchableOpacity>
         </View>
 
-          <TouchableOpacity
-            onPress={handleLogin}
-            disabled={isLoading}
-            style={[styles.button, isLoading && { opacity: 0.8 }]}
+        <TouchableOpacity
+          onPress={handleLogin}
+          disabled={isLoading}
+          style={[styles.button, isLoading && { opacity: 0.8 }]}
+        >
+          <LinearGradient
+            colors={["#9333EA", "#7C3AED"]}
+            style={styles.gradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
           >
-            <LinearGradient
-              colors={['#9333EA', '#7C3AED']}
-              style={styles.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Entrar</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Entrar</Text>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('PageRegister')}
+          onPress={() => navigation.navigate("PageRegister")}
           style={styles.linkContainer}
         >
           <Text style={styles.link}>Não tem conta? </Text>
-          <Text style={[styles.link, { color: '#9333EA', fontWeight: 'bold' }]}>
+          <Text style={[styles.link, { color: "#9333EA", fontWeight: "bold" }]}>
             Criar conta
           </Text>
         </TouchableOpacity>
@@ -164,73 +173,73 @@ export default function LoginPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: "#0D0D0D",
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 24,
     zIndex: 1,
   },
   title: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 32,
-    textAlign: 'center',
+    textAlign: "center",
   },
   circle1: {
-    position: 'absolute',
+    position: "absolute",
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(147, 51, 234, 0.1)',
+    backgroundColor: "rgba(147, 51, 234, 0.1)",
     top: -60,
     right: -100,
   },
   circle2: {
-    position: 'absolute',
+    position: "absolute",
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+    backgroundColor: "rgba(147, 51, 234, 0.05)",
     bottom: -75,
     left: -75,
   },
   circle3: {
-    position: 'absolute',
+    position: "absolute",
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(147, 51, 234, 0.08)',
-    top: '30%',
+    backgroundColor: "rgba(147, 51, 234, 0.08)",
+    top: "30%",
     right: -50,
   },
   input: {
     marginBottom: 16,
-    backgroundColor: 'rgba(30, 19, 53, 0.8)',
-    color: '#fff',
+    backgroundColor: "rgba(30, 19, 53, 0.8)",
+    color: "#fff",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(68, 22, 104, 0.6)',
+    borderColor: "rgba(68, 22, 104, 0.6)",
     fontSize: 16,
   },
   inputwrapp: {
-    color: '#fff',
+    color: "#fff",
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
-    backgroundColor: 'rgba(30, 19, 53, 0.8)',
+    backgroundColor: "rgba(30, 19, 53, 0.8)",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(68, 22, 104, 0.6)',
+    borderColor: "rgba(68, 22, 104, 0.6)",
     paddingRight: 10,
   },
   eyeButton: {
@@ -238,31 +247,31 @@ const styles = StyleSheet.create({
   },
   button: {
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
     elevation: 5,
-    shadowColor: '#9333EA',
+    shadowColor: "#9333EA",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
   gradient: {
     paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   linkContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 8,
   },
   link: {
-    color: '#aaa',
+    color: "#aaa",
     fontSize: 16,
   },
 });
