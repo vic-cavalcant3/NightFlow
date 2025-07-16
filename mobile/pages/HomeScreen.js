@@ -80,15 +80,24 @@ export default function HomePage({ navigation }) {
         setNome(usuario.nome);
         setUsuarioId(usuario.id);
         
+        // Debug completo dos dados do usuário
+        console.log("=== DEBUG DADOS DO USUÁRIO ===");
+        console.log("Dados completos:", usuario);
+        console.log("fotoUrl:", usuario.fotoUrl);
+        console.log("Tipo de fotoUrl:", typeof usuario.fotoUrl);
+        console.log("fotoUrl existe:", !!usuario.fotoUrl);
+        console.log("fotoUrl não está vazia:", usuario.fotoUrl && usuario.fotoUrl.trim() !== "");
+        
         // Verificar se há uma URL de imagem válida
-        if (usuario.fotoUrl && usuario.fotoUrl.trim() !== "") {
-          setUserImage(usuario.fotoUrl);
+        if (usuario.fotoUrl && usuario.fotoUrl.trim() !== "" && usuario.fotoUrl !== "null" && usuario.fotoUrl !== "undefined") {
+          const urlLimpa = usuario.fotoUrl.trim();
+          setUserImage(urlLimpa);
           setImageError(false);
-          console.log("Imagem do usuário carregada:", usuario.fotoUrl);
+          console.log("✅ Imagem do usuário definida:", urlLimpa);
         } else {
           setUserImage(null);
           setImageError(false);
-          console.log("Nenhuma imagem de usuário encontrada");
+          console.log("❌ Nenhuma imagem válida encontrada");
         }
 
         return usuario.id;
@@ -101,9 +110,16 @@ export default function HomePage({ navigation }) {
   };
 
   // Função para lidar com erro de carregamento da imagem
-  const handleImageError = () => {
-    console.log("Erro ao carregar imagem do usuário");
+  const handleImageError = (error) => {
+    console.log("❌ Erro ao carregar imagem do usuário:", error);
+    console.log("URL que falhou:", userImage);
     setImageError(true);
+  };
+
+  // Função para quando a imagem carrega com sucesso
+  const handleImageLoad = () => {
+    console.log("✅ Imagem carregada com sucesso!");
+    setImageError(false);
   };
 
   // Função para buscar estatísticas
@@ -177,6 +193,10 @@ export default function HomePage({ navigation }) {
   // Recarregar dados quando a tela ganhar foco
   useFocusEffect(
     useCallback(() => {
+      console.log("=== TELA RECEBEU FOCO ===");
+      // Recarregar dados do usuário para atualizar a foto
+      buscarDadosUsuario();
+      
       if (usuarioId) {
         buscarEstatisticas(usuarioId);
         buscarMetas(usuarioId);
@@ -190,16 +210,24 @@ export default function HomePage({ navigation }) {
 
   // Função para renderizar o avatar
   const renderAvatar = () => {
+    console.log("=== RENDERIZANDO AVATAR ===");
+    console.log("userImage:", userImage);
+    console.log("imageError:", imageError);
+    console.log("Condição para mostrar imagem:", userImage && !imageError);
+    
     if (userImage && !imageError) {
       return (
         <Image
           source={{ uri: userImage }}
           style={styles.userAvatar}
           onError={handleImageError}
-          onLoad={() => console.log("Imagem carregada com sucesso")}
+          onLoad={handleImageLoad}
+          onLoadStart={() => console.log("🔄 Iniciando carregamento da imagem...")}
+          onLoadEnd={() => console.log("⏹️ Carregamento da imagem finalizado")}
         />
       );
     } else {
+      console.log("Mostrando placeholder");
       return (
         <View style={styles.userAvatarPlaceholder}>
           <Ionicons name="person" size={24} color="#6D28D9" />
@@ -231,63 +259,66 @@ export default function HomePage({ navigation }) {
           <Text style={styles.userName}>{nome.split(" ")[0]}</Text>
         </View>
 
-        <Menu
-          visible={visible}
-          anchor={
-            <TouchableOpacity onPress={showMenu} style={styles.avatarContainer}>
-              {renderAvatar()}
-            </TouchableOpacity>
-          }
-          onRequestClose={hideMenu}
-          style={styles.menu}
-        >
-          <MenuItem
-            onPress={() => {
-              hideMenu();
-              navigation.navigate("Perfil");
-            }}
+        <View style={styles.avatarSection}>
+
+          <Menu
+            visible={visible}
+            anchor={
+              <TouchableOpacity onPress={showMenu} style={styles.avatarContainer}>
+                {renderAvatar()}
+              </TouchableOpacity>
+            }
+            onRequestClose={hideMenu}
+            style={styles.menu}
           >
-            <View style={styles.menuItem}>
-              <Ionicons name="person-outline" size={20} color="#6D28D9" />
-              <Text style={styles.menuText}>Meu Perfil</Text>
-            </View>
-          </MenuItem>
-          <MenuItem
-            onPress={() => {
-              hideMenu();
-              navigation.navigate("Calendar");
-            }}
-          >
-            <View style={styles.menuItem}>
-              <MaterialIcons name="calendar-today" size={20} color="#6D28D9" />
-              <Text style={styles.menuText}>Calendário</Text>
-            </View>
-          </MenuItem>
-          <MenuItem
-            onPress={() => {
-              hideMenu();
-              navigation.navigate("Goals");
-            }}
-          >
-            <View style={styles.menuItem}>
-              <Feather name="target" size={20} color="#6D28D9" />
-              <Text style={styles.menuText}>Minhas Metas</Text>
-            </View>
-          </MenuItem>
-          <MenuItem
-            onPress={() => {
-              hideMenu();
-              setTimeout(() => {
-                sair();
-              }, 100);
-            }}
-          >
-            <View style={styles.menuItem}>
-              <Ionicons name="log-out-outline" size={20} color="#6D28D9" />
-              <Text style={styles.menuText}>Sair</Text>
-            </View>
-          </MenuItem>
-        </Menu>
+            <MenuItem
+              onPress={() => {
+                hideMenu();
+                navigation.navigate("Perfil");
+              }}
+            >
+              <View style={styles.menuItem}>
+                <Ionicons name="person-outline" size={20} color="#6D28D9" />
+                <Text style={styles.menuText}>Meu Perfil</Text>
+              </View>
+            </MenuItem>
+            <MenuItem
+              onPress={() => {
+                hideMenu();
+                navigation.navigate("Calendar");
+              }}
+            >
+              <View style={styles.menuItem}>
+                <MaterialIcons name="calendar-today" size={20} color="#6D28D9" />
+                <Text style={styles.menuText}>Calendário</Text>
+              </View>
+            </MenuItem>
+            <MenuItem
+              onPress={() => {
+                hideMenu();
+                navigation.navigate("Goals");
+              }}
+            >
+              <View style={styles.menuItem}>
+                <Feather name="target" size={20} color="#6D28D9" />
+                <Text style={styles.menuText}>Minhas Metas</Text>
+              </View>
+            </MenuItem>
+            <MenuItem
+              onPress={() => {
+                hideMenu();
+                setTimeout(() => {
+                  sair();
+                }, 100);
+              }}
+            >
+              <View style={styles.menuItem}>
+                <Ionicons name="log-out-outline" size={20} color="#6D28D9" />
+                <Text style={styles.menuText}>Sair</Text>
+              </View>
+            </MenuItem>
+          </Menu>
+        </View>
       </View>
 
       {/* Conteúdo principal */}
@@ -455,6 +486,21 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     overflow: "hidden",
+  },
+  avatarSection: {
+    alignItems: "center",
+    gap: 8,
+  },
+  testButton: {
+    backgroundColor: "#6D28D9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  testButtonText: {
+    color: "white",
+    fontSize: 10,
   },
   userAvatarPlaceholder: {
     width: 48,
