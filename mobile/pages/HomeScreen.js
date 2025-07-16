@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 
-const API_URL = '"http://192.168.15.7:4000'; // Altere para seu IP se necessário
+const API_URL = 'http://192.168.15.7:4000';
 
 export default function HomePage({ navigation }) {
   const [nome, setNome] = useState("Usuário");
@@ -92,7 +92,7 @@ export default function HomePage({ navigation }) {
     try {
       const response = await fetch(`${API_URL}/estatisticas/${userId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         setEstatisticas(data.estatisticas);
       }
@@ -106,7 +106,7 @@ export default function HomePage({ navigation }) {
     try {
       const response = await fetch(`${API_URL}/metas/${userId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         // Pegar as 2 metas mais recentes
         const metasOrdenadas = data.metas.slice(0, 2);
@@ -122,14 +122,14 @@ export default function HomePage({ navigation }) {
     try {
       const response = await fetch(`${API_URL}/eventos/${userId}`);
       const data = await response.json();
-      
+
       if (data.success) {
         // Filtrar eventos futuros e pegar o mais próximo
         const hoje = new Date();
         const eventosFuturos = data.eventos
           .filter((e) => new Date(e.data) >= hoje)
           .slice(0, 1);
-        
+
         setEventos(eventosFuturos);
       }
     } catch (error) {
@@ -144,7 +144,7 @@ export default function HomePage({ navigation }) {
       await Promise.all([
         buscarEstatisticas(userId),
         buscarMetas(userId),
-        buscarEventos(userId)
+        buscarEventos(userId),
       ]);
     }
     setLoading(false);
@@ -243,8 +243,10 @@ export default function HomePage({ navigation }) {
           </MenuItem>
           <MenuItem
             onPress={() => {
-              hideMenu();
-              sair();
+              // hideMenu();
+              setTimeout(() => {
+                sair();
+              }, 100); // Pequeno delay para permitir que o menu feche primeiro
             }}
           >
             <View style={styles.menuItem}>
@@ -322,7 +324,7 @@ export default function HomePage({ navigation }) {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>Nenhuma meta encontrada</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.createButton}
                 onPress={() => navigation.navigate("Goals")}
               >
@@ -368,7 +370,7 @@ export default function HomePage({ navigation }) {
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateText}>Nenhum evento próximo</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.createButton}
                 onPress={() => navigation.navigate("Calendar")}
               >
