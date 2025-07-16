@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 
-const API_URL = 'http://192.168.15.7:4000';
+const API_URL = "http://192.168.15.7:4000";
 
 export default function HomePage({ navigation }) {
   const [nome, setNome] = useState("Usuário");
@@ -25,6 +25,7 @@ export default function HomePage({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [visible, setVisible] = useState(false);
   const [userImage, setUserImage] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   const [metasRecentes, setMetasRecentes] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -78,6 +79,18 @@ export default function HomePage({ navigation }) {
         const usuario = JSON.parse(dadosUsuario);
         setNome(usuario.nome);
         setUsuarioId(usuario.id);
+        
+        // Verificar se há uma URL de imagem válida
+        if (usuario.fotoUrl && usuario.fotoUrl.trim() !== "") {
+          setUserImage(usuario.fotoUrl);
+          setImageError(false);
+          console.log("Imagem do usuário carregada:", usuario.fotoUrl);
+        } else {
+          setUserImage(null);
+          setImageError(false);
+          console.log("Nenhuma imagem de usuário encontrada");
+        }
+
         return usuario.id;
       }
       return null;
@@ -85,6 +98,12 @@ export default function HomePage({ navigation }) {
       console.log("Erro ao buscar dados do usuário:", erro);
       return null;
     }
+  };
+
+  // Função para lidar com erro de carregamento da imagem
+  const handleImageError = () => {
+    console.log("Erro ao carregar imagem do usuário");
+    setImageError(true);
   };
 
   // Função para buscar estatísticas
@@ -169,6 +188,26 @@ export default function HomePage({ navigation }) {
   const hideMenu = () => setVisible(false);
   const showMenu = () => setVisible(true);
 
+  // Função para renderizar o avatar
+  const renderAvatar = () => {
+    if (userImage && !imageError) {
+      return (
+        <Image
+          source={{ uri: userImage }}
+          style={styles.userAvatar}
+          onError={handleImageError}
+          onLoad={() => console.log("Imagem carregada com sucesso")}
+        />
+      );
+    } else {
+      return (
+        <View style={styles.userAvatarPlaceholder}>
+          <Ionicons name="person" size={24} color="#6D28D9" />
+        </View>
+      );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -195,14 +234,8 @@ export default function HomePage({ navigation }) {
         <Menu
           visible={visible}
           anchor={
-            <TouchableOpacity onPress={showMenu}>
-              {userImage ? (
-                <Image source={{ uri: userImage }} style={styles.userAvatar} />
-              ) : (
-                <View style={styles.userAvatarPlaceholder}>
-                  <Ionicons name="person" size={24} color="#6D28D9" />
-                </View>
-              )}
+            <TouchableOpacity onPress={showMenu} style={styles.avatarContainer}>
+              {renderAvatar()}
             </TouchableOpacity>
           }
           onRequestClose={hideMenu}
@@ -211,7 +244,7 @@ export default function HomePage({ navigation }) {
           <MenuItem
             onPress={() => {
               hideMenu();
-              navigation.navigate("Profile");
+              navigation.navigate("Perfil");
             }}
           >
             <View style={styles.menuItem}>
@@ -243,10 +276,10 @@ export default function HomePage({ navigation }) {
           </MenuItem>
           <MenuItem
             onPress={() => {
-              // hideMenu();
+              hideMenu();
               setTimeout(() => {
                 sair();
-              }, 100); // Pequeno delay para permitir que o menu feche primeiro
+              }, 100);
             }}
           >
             <View style={styles.menuItem}>
@@ -417,6 +450,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 4,
   },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    overflow: "hidden",
+  },
   userAvatarPlaceholder: {
     width: 48,
     height: 48,
@@ -429,6 +468,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    backgroundColor: "#EDE9FE", // Cor de fundo enquanto carrega
   },
   menu: {
     marginTop: 40,

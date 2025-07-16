@@ -1,13 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql');
-const bodyParser = require('body-parser');
 const app = express();
 const port = 4000;
 
 // Middlewares
+app.use('/uploads', express.static('uploads'));
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+
 
 // Conexão com o banco MySQL
 const db = mysql.createConnection({
@@ -24,6 +25,26 @@ db.connect((err) => {
     console.log('Conectado ao MySQL!');
   }
 });
+
+
+  //======================MULTER==============
+  const multer = require('multer');
+const path = require('path');
+
+// Configura o storage e nome do arquivo
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads'); // pasta onde vai salvar a foto
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    const filename = `user_${req.params.id}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const upload = multer({ storage: storage });
+
 
 // Rota de cadastro
 app.post('/cadastrar', (req, res) => {
@@ -242,6 +263,65 @@ app.get('/estatisticas/:usuario_id', (req, res) => {
     
     const estatisticas = results[0] || { total: 0, concluidas: 0, pendentes: 0 };
     res.json({ success: true, estatisticas });
+  });
+});
+
+//====================================PERFIL========================================
+// Buscar dados do usuário pelo id
+app.get('/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+
+  const sql = 'SELECT id, nome, email, telefone, sobre, fotoUrl FROM cadastro WHERE id = ?';
+
+  db.query(sql, [id], (err, results) => {
+    if (err) {
+      console.error('Erro ao buscar usuário:', err);
+      return res.status(500).json({ success: false, message: 'Erro interno' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuário não encontrado' });
+    }
+    res.json({ success: true, usuario: results[0] });
+  });
+});
+
+//Atualizar dados do usuario
+app.put('/usuarios/:id', (req, res) => {
+  const { id } = req.params;
+  const { nome, email, telefone, sobre } = req.body;
+
+  const sql = 'UPDATE cadastro SET nome = ?, email = ?, telefone = ?, sobre = ? WHERE id = ?';
+
+  db.query(sql, [nome, email, telefone, sobre, id], (err, result) => {
+    if (err) {
+      console.error('Erro ao atualizar usuário:', err);
+      return res.status(500).json({ success: false, message: 'Erro interno' });
+    }
+    res.json({ success: true, message: 'Dados atualizados com sucesso!' });
+  });
+});
+
+
+//=======================ROTA PRA FOTO=====================
+app.post('/usuarios/:id/foto', upload.single('foto'), (req, res) => {
+  const { id } = req.params;
+
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'Nenhuma foto enviada' });
+  }
+
+  // Caminho público para acessar a foto
+const fotoUrl = `http://192.168.15.7:${port}/uploads/${req.file.filename}`;
+
+  // Salva a URL da foto no banco
+  const sql = 'UPDATE cadastro SET fotoUrl = ? WHERE id = ?';
+
+  db.query(sql, [fotoUrl, id], (err, result) => {
+    if (err) {
+      console.error('Erro ao salvar URL da foto:', err);
+      return res.status(500).json({ success: false, message: 'Erro ao salvar foto' });
+    }
+    res.json({ success: true, message: 'Foto salva com sucesso!', fotoUrl });
   });
 });
 

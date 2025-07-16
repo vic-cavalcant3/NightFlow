@@ -16,6 +16,9 @@ import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+// Adicione sua URL da API aqui
+const API_URL = 'http://192.168.15.7:4000';
+
 export default function GoalsPage({ navigation }) {
   const [metas, setMetas] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -24,88 +27,175 @@ export default function GoalsPage({ navigation }) {
   const [descricao, setDescricao] = useState('');
   const [prazo, setPrazo] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [filtro, setFiltro] = useState('todas'); // todas, concluidas, pendentes
+  const [filtro, setFiltro] = useState('todas');
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    carregarMetas();
+    getUserId();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      carregarMetas();
+    }
+  }, [userId]);
+
+const getUserId = async () => {
+  try {
+    const usuario = await AsyncStorage.getItem('usuarioLogado');
+    if (usuario) {
+      const dados = JSON.parse(usuario);
+      setUserId(dados.id);
+    }
+  } catch (error) {
+    console.log('Erro ao buscar usuarioLogado:', error);
+  }
+};
+
 
   const carregarMetas = async () => {
     try {
-      const metasStorage = await AsyncStorage.getItem('metas');
-      if (metasStorage) {
-        setMetas(JSON.parse(metasStorage));
+      const response = await fetch(`${API_URL}/metas/${userId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setMetas(data.metas);
       }
     } catch (error) {
       console.log('Erro ao carregar metas:', error);
+      Alert.alert('Erro', 'Não foi possível carregar as metas');
     }
   };
 
-  const salvarMetas = async (novasMetas) => {
+  const adicionarMeta = async () => {
+    if (!titulo.trim()) {
+      Alert.alert('Erro', 'Por favor, digite um título para a meta.');
+      return;
+    }
+
     try {
-      await AsyncStorage.setItem('metas', JSON.stringify(novasMetas));
-      setMetas(novasMetas);
+      const response = await fetch(`${API_URL}/metas`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          usuario_id: userId,
+          titulo: titulo.trim(),
+          descricao: descricao.trim(),
+          prazo: prazo.toISOString().split('T')[0] // Formato YYYY-MM-DD
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        carregarMetas(); // Recarrega as metas
+        limparFormulario();
+        setModalVisible(false);
+        Alert.alert('Sucesso', 'Meta criada com sucesso!');
+      } else {
+        Alert.alert('Erro', 'Não foi possível criar a meta');
+      }
     } catch (error) {
-      console.log('Erro ao salvar metas:', error);
+      console.log('Erro ao criar meta:', error);
+      Alert.alert('Erro', 'Não foi possível criar a meta');
     }
   };
 
-  const adicionarMeta = () => {
+  const editarMeta = async () => {
     if (!titulo.trim()) {
       Alert.alert('Erro', 'Por favor, digite um título para a meta.');
       return;
     }
 
-    const novaMeta = {
-      id: Date.now().toString(),
-      titulo: titulo.trim(),
-      descricao: descricao.trim(),
-      prazo: prazo.toISOString(),
-      status: 'pendente',
-      criadoEm: new Date().toISOString(),
-      concluidoEm: null
-    };
+    try {
+      const response = await fetch(`${API_URL}/metas/${editingMeta.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          titulo: titulo.trim(),
+          descricao: descricao.trim(),
+          prazo: prazo.toISOString().split('T')[0],
+          status: editingMeta.status
+        })
+      });
 
-    const novasMetas = [...metas, novaMeta];
-    salvarMetas(novasMetas);
-    limparFormulario();
-    setModalVisible(false);
-  };
-
-  const editarMeta = () => {
-    if (!titulo.trim()) {
-      Alert.alert('Erro', 'Por favor, digite um título para a meta.');
-      return;
+      const data = await response.json();
+      
+      if (data.success) {
+        carregarMetas(); // Recarrega as metas
+        limparFormulario();
+        setModalVisible(false);
+        setEditingMeta(null);
+        Alert.alert('Sucesso', 'Meta atualizada com sucesso!');
+      } else {
+        Alert.alert('Erro', 'Não foi possível atualizar a meta');
+      }
+    } catch (error) {
+      console.log('Erro ao atualizar meta:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar a meta');
     }
-
-    const metasAtualizadas = metas.map(meta => 
-      meta.id === editingMeta.id 
-        ? { ...meta, titulo: titulo.trim(), descricao: descricao.trim(), prazo: prazo.toISOString() }
-        : meta
-    );
-
-    salvarMetas(metasAtualizadas);
-    limparFormulario();
-    setModalVisible(false);
-    setEditingMeta(null);
   };
 
-  const concluirMeta = (id) => {
-    const metasAtualizadas = metas.map(meta => 
-      meta.id === id 
-        ? { ...meta, status: 'concluida', concluidoEm: new Date().toISOString() }
-        : meta
-    );
-    salvarMetas(metasAtualizadas);
+  const concluirMeta = async (id) => {
+    try {
+      const meta = metas.find(m => m.id === id);
+      const response = await fetch(`${API_URL}/metas/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          titulo: meta.titulo,
+          descricao: meta.descricao,
+          prazo: meta.prazo,
+          status: 'concluida'
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        carregarMetas(); // Recarrega as metas
+      } else {
+        Alert.alert('Erro', 'Não foi possível concluir a meta');
+      }
+    } catch (error) {
+      console.log('Erro ao concluir meta:', error);
+      Alert.alert('Erro', 'Não foi possível concluir a meta');
+    }
   };
 
-  const reabrirMeta = (id) => {
-    const metasAtualizadas = metas.map(meta => 
-      meta.id === id 
-        ? { ...meta, status: 'pendente', concluidoEm: null }
-        : meta
-    );
-    salvarMetas(metasAtualizadas);
+  const reabrirMeta = async (id) => {
+    try {
+      const meta = metas.find(m => m.id === id);
+      const response = await fetch(`${API_URL}/metas/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          titulo: meta.titulo,
+          descricao: meta.descricao,
+          prazo: meta.prazo,
+          status: 'pendente'
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        carregarMetas(); // Recarrega as metas
+      } else {
+        Alert.alert('Erro', 'Não foi possível reabrir a meta');
+      }
+    } catch (error) {
+      console.log('Erro ao reabrir meta:', error);
+      Alert.alert('Erro', 'Não foi possível reabrir a meta');
+    }
   };
 
   const excluirMeta = (id, titulo) => {
@@ -117,13 +207,30 @@ export default function GoalsPage({ navigation }) {
         { 
           text: 'Excluir', 
           style: 'destructive',
-          onPress: () => {
-            const metasAtualizadas = metas.filter(meta => meta.id !== id);
-            salvarMetas(metasAtualizadas);
-          }
+          onPress: () => deletarMeta(id)
         }
       ]
     );
+  };
+
+  const deletarMeta = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/metas/${id}`, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        carregarMetas(); // Recarrega as metas
+        Alert.alert('Sucesso', 'Meta excluída com sucesso!');
+      } else {
+        Alert.alert('Erro', 'Não foi possível excluir a meta');
+      }
+    } catch (error) {
+      console.log('Erro ao excluir meta:', error);
+      Alert.alert('Erro', 'Não foi possível excluir a meta');
+    }
   };
 
   const limparFormulario = () => {
@@ -148,6 +255,8 @@ export default function GoalsPage({ navigation }) {
   const isMetaVencida = (prazoString) => {
     const prazo = new Date(prazoString);
     const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    prazo.setHours(0, 0, 0, 0);
     return prazo < hoje;
   };
 
@@ -302,7 +411,7 @@ export default function GoalsPage({ navigation }) {
       <FlatList
         data={metasFiltradas}
         renderItem={renderMeta}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
@@ -403,7 +512,6 @@ export default function GoalsPage({ navigation }) {
     </LinearGradient>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

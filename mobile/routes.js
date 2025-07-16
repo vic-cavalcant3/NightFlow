@@ -6,6 +6,8 @@ import SplashScreen from './pages/SplashScreen';
 import HomeScreen from './pages/HomeScreen';
 import Goals from './pages/GoalsPage';
 import Calendar from './pages/CalendarPage'
+import Perfil from './pages/PerfilPage'
+
 
 
 const Stack = createNativeStackNavigator();
@@ -19,6 +21,8 @@ export default function Routes() {
       <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }}  />
       <Stack.Screen name="Goals" component={Goals} options={{ headerShown: false }}  />
       <Stack.Screen name="Calendar" component={Calendar} options={{ headerShown: false }}  />
+      <Stack.Screen name="Perfil" component={Perfil} options={{ headerShown: false }}  />
+
 
 
 
