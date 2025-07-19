@@ -17,7 +17,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import {ScrollView} from 'react-native';
 
 
-const API_URL = "http://192.168.15.7:4000";
+const API_URL = "http://192.168.15.40:4000";
 
 export default function EventosPage({ navigation }) {
   const [eventos, setEventos] = useState([]);
