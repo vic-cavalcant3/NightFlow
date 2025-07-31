@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback } from "react";
 
-const API_URL = "http://172.29.240.1:4000";
+const API_URL = "http://10.136.23.133:4000";
 
 export default function HomePage({ navigation }) {
   const [nome, setNome] = useState("Usuário");

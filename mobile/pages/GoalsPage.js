@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Adicione sua URL da API aqui
-const API_URL = 'http://172.29.240.1:4000';
+const API_URL = 'http://10.136.23.133:4000';
 
 export default function GoalsPage({ navigation }) {
   const [metas, setMetas] = useState([]);
