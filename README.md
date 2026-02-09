@@ -94,29 +94,8 @@ Você pode:
 * Abrir no navegador (tecla W)
 * Abrir no celular usando o Expo Go
 
-## 🎓 Contexto Acadêmico
-Projeto desenvolvido com fins educacionais, focado no aprendizado prático de:
 
-* React Native
-* Expo
-* Node.js
-* MySQL
-* Integração frontend e backend
 
-🚀 Status do Projeto
-🟡 Em desenvolvimento
-
-📌 Observação
+## 📌 Observação
 Este projeto ainda está em evolução e pode receber melhorias futuras, como autenticação mais segura, melhorias de UI/UX e deploy em produção.
 
-Expo
-
-Node.js
-
-MySQL
-
-Integração frontend e backend
-
-🚀 Status do Projeto 🟡 Em desenvolvimento
-
-📌 Observação Este projeto ainda está em evolução e pode receber melhorias futuras, como autenticação mais segura, melhorias de UI/UX e deploy em produção.
