@@ -96,7 +96,7 @@ export default function PageRegister() {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://10.136.23.133:4000/cadastrar', {
+      const response = await fetch('http://192.168.0.114:4000/cadastrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

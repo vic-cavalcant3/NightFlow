@@ -53,7 +53,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      const response = await fetch("http://10.136.23.133:4000/login", {
+      const response = await fetch("http://192.168.0.114:4000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),

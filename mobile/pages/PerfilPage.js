@@ -13,7 +13,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 
-const API_URL = "http://10.136.23.133:4000";
+const API_URL = "http://192.168.0.114:4000";
 
 export default function PerfilPage() {
   const [usuario, setUsuario] = useState(null);
